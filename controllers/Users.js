@@ -1,6 +1,7 @@
 import Users from "../models/UserModel.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import argon2 from "argon2";
 
 export const getUsers = async (req, res) => {
   try {
@@ -12,10 +13,74 @@ export const getUsers = async (req, res) => {
     console.log(error);
   }
 };
+export const getUserById = async (req, res) => {
+  try {
+    const response = await Users.findOne({
+      where: {
+        id: req.params.id,
+      },
+    });
+    res.status(200).json(response);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateUserId = async (req, res) => {
+  const user = await Users.findOne({
+    where: {
+      id: req.params.id,
+    },
+  });
+  if (!user) return res.status(404).json({ message: "User Not Found" });
+  const { name, email, phone_number, address } = req.body;
+  try {
+    await Users.update(
+      {
+        name: name,
+        phone_number: phone_number,
+        address: address,
+        email: email,
+      },
+      {
+        where: {
+          id: user.id,
+        },
+      }
+    );
+    res.status(200).json({
+      message: "User Updated",
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const deleteUser = async (req, res) => {
+  const user = await Users.findOne({
+    where: {
+      id: req.params.id,
+    },
+  });
+  if (!user) return res.status(404).json({ message: "User Not Found" });
+  try {
+    await Users.destroy({
+      where: {
+        id: user.id,
+      },
+    });
+    res.status(200).json({
+      message: "User Deleted",
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 export const Register = async (req, res) => {
   const { name, phone_number, address, email, password, confPassword } =
     req.body;
+
   if (password !== confPassword)
     return res.status(400).json({ message: "Password is not Correct" });
   const salt = await bcrypt.genSalt();
@@ -53,7 +118,7 @@ export const Login = async (req, res) => {
       { userId, name, email },
       process.env.ACCESS_TOKEN_SECRET,
       {
-        expiresIn: "20s",
+        expiresIn: "1d",
       }
     );
     const refreshToken = jwt.sign(
